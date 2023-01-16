@@ -1,0 +1,4 @@
+setuptools==65.5.0
+numpy~=1.23.4
+h5py
+tqdm

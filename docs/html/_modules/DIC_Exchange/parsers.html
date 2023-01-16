@@ -1,0 +1,449 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DIC_Exchange.parsers &#8212; DIC Results Exchange Format 0.1a documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for DIC_Exchange.parsers</h1><div class="highlight"><pre>
+<span></span><span class="c1">#  Standardised exchange file format for 2D/3D-DIC results, based on HDF5</span>
+<span class="c1">#  Copyright (c) 2022. Chair of Forming and Machining Processes, TU Dresden</span>
+<span class="c1">#  This program is free software: you can redistribute it and/or modify</span>
+<span class="c1">#      it under the terms of the GNU Affero General Public License as</span>
+<span class="c1">#      published by the Free Software Foundation, either version 3 of the</span>
+<span class="c1">#      License, or (at your option) any later version.</span>
+<span class="c1">#      This program is distributed in the hope that it will be useful,</span>
+<span class="c1">#      but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#      GNU Affero General Public License for more details.</span>
+<span class="c1">#      You should have received a copy of the GNU Affero General Public License</span>
+<span class="c1">#      along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">xml.etree.ElementTree</span> <span class="k">as</span> <span class="nn">ET</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span>
+
+
+<div class="viewcode-block" id="ABC_parser"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.ABC_parser">[docs]</a><span class="k">class</span> <span class="nc">ABC_parser</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<div class="viewcode-block" id="ABC_parser.parse"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.ABC_parser.parse">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">verbose</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div></div>
+
+
+<span class="c1">#### DICE Parser</span>
+
+<div class="viewcode-block" id="DICe_Parser"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.DICe_Parser">[docs]</a><span class="k">class</span> <span class="nc">DICe_Parser</span><span class="p">(</span><span class="n">ABC_parser</span><span class="p">):</span>
+<div class="viewcode-block" id="DICe_Parser.parse"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.DICe_Parser.parse">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">verbose</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span></div></div>
+
+<span class="c1">#### Aramis Parser</span>
+
+<span class="n">MAX_UINT</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="mi">32</span> <span class="o">-</span> <span class="mi">1</span>
+<span class="n">LEN_INT</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">calcsize</span><span class="p">(</span><span class="s2">&quot;&lt;I&quot;</span><span class="p">)</span>
+<span class="n">LEN_DOUBLE</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">calcsize</span><span class="p">(</span><span class="s2">&quot;&lt;d&quot;</span><span class="p">)</span>
+<span class="n">LEN_CHAR</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">calcsize</span><span class="p">(</span><span class="s2">&quot;&lt;c&quot;</span><span class="p">)</span>
+<span class="n">LEN_FLOAT</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">calcsize</span><span class="p">(</span><span class="s2">&quot;&lt;f&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ARAMIS_XML_Parser"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.ARAMIS_XML_Parser">[docs]</a><span class="k">class</span> <span class="nc">ARAMIS_XML_Parser</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parser for XML Aramis binary output file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="mf">0.1</span>
+
+<div class="viewcode-block" id="ARAMIS_XML_Parser.parse"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.ARAMIS_XML_Parser.parse">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="n">csl</span><span class="p">,</span> <span class="n">path_xml</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">v_print</span> <span class="o">=</span> <span class="nb">print</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">v_print</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span> <span class="p">:</span> <span class="kc">None</span>
+
+        <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;start reading XML data&quot;</span><span class="p">)</span>
+        <span class="n">header_read</span><span class="p">,</span> <span class="n">nominal_read</span><span class="p">,</span> <span class="n">measured_read</span> <span class="o">=</span> <span class="n">read_file</span><span class="p">(</span><span class="n">path_xml</span><span class="p">,</span> <span class="n">v_print</span><span class="p">)</span>
+        <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;start writing hdf5&quot;</span><span class="p">)</span>
+
+        <span class="n">rel_time</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">stage_id</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">stage_name</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">stage</span> <span class="ow">in</span> <span class="n">header_read</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">rel_time</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">stage</span><span class="p">[</span><span class="s2">&quot;rel_time&quot;</span><span class="p">]))</span>
+            <span class="n">stage_name</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">stage</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]))</span>
+            <span class="n">stage_id</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stage</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">])</span>
+
+        <span class="n">triangle</span><span class="p">,</span> <span class="n">geometry</span> <span class="o">=</span> <span class="n">measured_read</span>
+
+        <span class="n">comparison_surface_list</span><span class="p">,</span> <span class="n">dimension_list</span> <span class="o">=</span> <span class="n">nominal_read</span>
+        <span class="n">force_values</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">dimension_list</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dimension_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]))]</span>
+
+        <span class="n">list_epsilon</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">comparison_surface_list</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+        <span class="n">eps_xx_key</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">eps_yy_key</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">eps_xy_key</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">re_epx_xy</span> <span class="o">=</span> <span class="s2">&quot;^.*epsXY.*$&quot;</span>
+        <span class="n">re_eps_xx</span> <span class="o">=</span> <span class="s2">&quot;^.*epsX.*$&quot;</span>
+        <span class="n">re_eps_yy</span> <span class="o">=</span> <span class="s2">&quot;^.*epsY.*$&quot;</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">re_epx_xy</span><span class="p">,</span> <span class="n">list_epsilon</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span>
+                <span class="n">eps_xy_key</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="k">break</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">re_eps_yy</span><span class="p">,</span> <span class="n">list_epsilon</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span>
+                <span class="n">eps_yy_key</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="k">break</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">re_eps_xx</span><span class="p">,</span> <span class="n">list_epsilon</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">re_epx_xy</span><span class="p">,</span> <span class="n">list_epsilon</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span>
+                    <span class="n">eps_xx_key</span> <span class="o">=</span> <span class="n">i</span>
+                    <span class="k">break</span>
+
+        <span class="n">force</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">stage_id</span><span class="p">,</span> <span class="n">force_values</span><span class="p">))</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">stage_id</span><span class="p">,</span> <span class="n">rel_time</span><span class="p">))</span>
+
+        <span class="n">mesh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">triangle</span><span class="p">)</span>
+
+        <span class="n">coords</span> <span class="o">=</span> <span class="n">geometry</span>
+        <span class="n">strains</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="n">strains</span><span class="p">[</span><span class="s2">&quot;eps_xx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">comparison_surface_list</span><span class="p">[</span><span class="n">list_epsilon</span><span class="p">[</span><span class="n">eps_xx_key</span><span class="p">]]</span>
+        <span class="n">strains</span><span class="p">[</span><span class="s2">&quot;eps_yy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">comparison_surface_list</span><span class="p">[</span><span class="n">list_epsilon</span><span class="p">[</span><span class="n">eps_yy_key</span><span class="p">]]</span>
+        <span class="n">strains</span><span class="p">[</span><span class="s2">&quot;eps_xy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">comparison_surface_list</span><span class="p">[</span><span class="n">list_epsilon</span><span class="p">[</span><span class="n">eps_xy_key</span><span class="p">]]</span>
+
+        <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;Done parsing xml&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">coords</span><span class="p">,</span> <span class="n">strains</span><span class="p">,</span> <span class="n">force</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">mesh</span></div></div>
+
+
+<div class="viewcode-block" id="read_file"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.read_file">[docs]</a><span class="k">def</span> <span class="nf">read_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">v_print</span><span class="p">):</span>
+    <span class="n">tree</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">getroot</span><span class="p">()</span>
+
+    <span class="n">header_read</span><span class="p">,</span> <span class="n">nominal_read</span><span class="p">,</span> <span class="n">measured_read</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="k">for</span> <span class="n">an_el</span> <span class="ow">in</span> <span class="n">root</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;header&quot;</span><span class="p">:</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;start reading header&quot;</span><span class="p">)</span>
+            <span class="n">header_el</span> <span class="o">=</span> <span class="n">an_el</span>
+            <span class="n">header_read</span> <span class="o">=</span> <span class="n">read_header</span><span class="p">(</span><span class="n">header_el</span><span class="p">,</span> <span class="n">v_print</span><span class="p">)</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;done reading header&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;nominal&quot;</span><span class="p">:</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;start reading nominal&quot;</span><span class="p">)</span>
+            <span class="n">nominal_el</span> <span class="o">=</span> <span class="n">an_el</span>
+            <span class="n">nominal_read</span> <span class="o">=</span> <span class="n">read_nominal</span><span class="p">(</span><span class="n">nominal_el</span><span class="p">,</span> <span class="n">v_print</span><span class="p">)</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;done reading nominal&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;measured&quot;</span><span class="p">:</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;start reading measured&quot;</span><span class="p">)</span>
+            <span class="n">measured_el</span> <span class="o">=</span> <span class="n">an_el</span>
+            <span class="n">measured_read</span> <span class="o">=</span> <span class="n">read_measured</span><span class="p">(</span><span class="n">measured_el</span><span class="p">)</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;done reading measured&quot;</span><span class="p">)</span>
+
+    <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;done reading file&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">header_read</span><span class="p">,</span> <span class="n">nominal_read</span><span class="p">,</span> <span class="n">measured_read</span></div>
+
+
+<div class="viewcode-block" id="read_nominal"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.read_nominal">[docs]</a><span class="k">def</span> <span class="nf">read_nominal</span><span class="p">(</span><span class="n">nominal_el</span><span class="p">,</span> <span class="n">v_print</span><span class="p">):</span>
+    <span class="n">comparison_surface_list</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="n">dimension_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">an_el</span> <span class="ow">in</span> <span class="n">nominal_el</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;comparison_surface_component&quot;</span><span class="p">:</span>
+            <span class="n">surf_comp_name</span> <span class="o">=</span> <span class="n">an_el</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+            <span class="n">buff_surf_comp</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">under_el</span> <span class="ow">in</span> <span class="n">an_el</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">under_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;actual&quot;</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="k">elif</span> <span class="n">under_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;stage&quot;</span><span class="p">:</span>
+                    <span class="n">buff_surf_comp</span><span class="p">[</span><span class="n">under_el</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">elif</span> <span class="n">under_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;result&quot;</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">u_u_el</span> <span class="ow">in</span> <span class="n">under_el</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">u_u_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;stage&quot;</span><span class="p">:</span>
+                            <span class="n">the_id</span> <span class="o">=</span> <span class="n">u_u_el</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
+                            <span class="k">if</span> <span class="n">the_id</span> <span class="ow">in</span> <span class="n">buff_surf_comp</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                                <span class="n">bytes_b64</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                                <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">u_u_el</span><span class="p">:</span>
+                                    <span class="n">bytes_b64</span> <span class="o">+=</span> <span class="n">chunk</span><span class="o">.</span><span class="n">text</span>
+                                <span class="n">buff_surf_comp</span><span class="p">[</span><span class="n">the_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">read_surface_component_scalar</span><span class="p">(</span><span class="n">bytes_b64</span><span class="p">)</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid stage in results of comparison surface component &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">surf_comp_name</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="n">under_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;strain_semantic&quot;</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">v_print</span><span class="p">(</span><span class="n">under_el</span><span class="p">)</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Uknnown element in comparison surface component  &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">surf_comp_name</span><span class="p">))</span>
+            <span class="n">comparison_surface_list</span><span class="p">[</span><span class="n">surf_comp_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">buff_surf_comp</span>
+        <span class="k">elif</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;dimension&quot;</span><span class="p">:</span>
+            <span class="n">buff_dimension</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">under_el</span> <span class="ow">in</span> <span class="n">an_el</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">under_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;result&quot;</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">u_u_el</span> <span class="ow">in</span> <span class="n">under_el</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">u_u_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;stage&quot;</span><span class="p">:</span>
+                            <span class="n">buff_time</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">u_u_el</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s2">&quot;rel_time&quot;</span><span class="p">])</span>
+                            <span class="n">buff_force</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">u_u_el</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">])</span>
+                        <span class="n">buff_dimension</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">buff_time</span><span class="p">,</span> <span class="n">buff_force</span><span class="p">))</span>
+            <span class="n">dimension_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">buff_dimension</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">comparison_surface_list</span><span class="p">,</span> <span class="n">dimension_list</span></div>
+
+
+<div class="viewcode-block" id="read_header"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.read_header">[docs]</a><span class="k">def</span> <span class="nf">read_header</span><span class="p">(</span><span class="n">header_el</span><span class="p">,</span> <span class="n">v_print</span><span class="p">):</span>
+    <span class="n">stages_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">an_el</span> <span class="ow">in</span> <span class="n">header_el</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;version&quot;</span><span class="p">:</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;Version of the XML file is &quot;</span> <span class="o">+</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;length_unit&quot;</span><span class="p">:</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;Length unit of the document is &quot;</span> <span class="o">+</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;mm&quot;</span><span class="p">:</span>
+                <span class="n">length_unit_factor</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown length unit format&quot;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;time_unit&quot;</span><span class="p">:</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;Time unit of the document is &quot;</span> <span class="o">+</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span>
+                <span class="n">time_unit_factor</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown time unit format&quot;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;force_unit&quot;</span><span class="p">:</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;Force unit of the document is &quot;</span> <span class="o">+</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;N&quot;</span><span class="p">:</span>
+                <span class="n">force_unit_factor</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">elif</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;kN&quot;</span><span class="p">:</span>
+                <span class="n">force_unit_factor</span> <span class="o">=</span> <span class="mf">1e3</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown force unit format&quot;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;angle_unit&quot;</span><span class="p">:</span>
+            <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;Angle unit of the document is &quot;</span> <span class="o">+</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;deg&quot;</span><span class="p">:</span>
+                <span class="n">angle_unit_factor</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">elif</span> <span class="n">an_el</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="s2">&quot;rad&quot;</span><span class="p">:</span>
+                <span class="n">angle_unit_factor</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mi">360</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown angle unit format&quot;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">an_el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;stage&quot;</span><span class="p">:</span>
+            <span class="n">stages_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">an_el</span><span class="o">.</span><span class="n">attrib</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown element in Header&quot;</span><span class="p">)</span>
+
+    <span class="n">v_print</span><span class="p">(</span><span class="s2">&quot;Found </span><span class="si">{the_len}</span><span class="s2"> stage(s)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">the_len</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">stages_list</span><span class="p">)))</span>
+
+    <span class="k">return</span> <span class="n">stages_list</span><span class="p">,</span> <span class="p">(</span><span class="n">length_unit_factor</span><span class="p">,</span> <span class="n">time_unit_factor</span><span class="p">,</span> <span class="n">angle_unit_factor</span><span class="p">,</span> <span class="n">force_unit_factor</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="read_measured"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.read_measured">[docs]</a><span class="k">def</span> <span class="nf">read_measured</span><span class="p">(</span><span class="n">measured_el</span><span class="p">):</span>
+    <span class="n">buff_triangle</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">buff_stages_surface</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">measured_el</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;triangles&quot;</span><span class="p">:</span>
+            <span class="n">buff_triangle</span> <span class="o">=</span> <span class="n">read_surface_component_triangles</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">el</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s2">&quot;stage&quot;</span><span class="p">:</span>
+            <span class="n">buff_stages_surface</span><span class="p">[</span><span class="n">el</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">read_surface_component_vertices</span><span class="p">(</span><span class="n">el</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">buff_triangle</span><span class="p">,</span> <span class="n">buff_stages_surface</span></div>
+
+
+<div class="viewcode-block" id="read_surface_component_scalar"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.read_surface_component_scalar">[docs]</a><span class="k">def</span> <span class="nf">read_surface_component_scalar</span><span class="p">(</span><span class="n">string_binary</span><span class="p">):</span>
+    <span class="n">base64_bytes</span> <span class="o">=</span> <span class="n">string_binary</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">message_bytes</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">base64_bytes</span><span class="p">)</span>
+    <span class="n">off</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;I&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">[:</span><span class="n">LEN_INT</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">off</span> <span class="o">+=</span> <span class="n">LEN_INT</span>
+    <span class="n">unit_name</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">version</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">len_string</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;I&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">[</span><span class="n">off</span><span class="p">:</span> <span class="n">off</span> <span class="o">+</span> <span class="n">LEN_INT</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">off</span> <span class="o">+=</span> <span class="n">LEN_INT</span>
+        <span class="n">unit_name</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">len_string</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;s&quot;</span><span class="p">,</span>
+                                  <span class="n">message_bytes</span><span class="p">[</span><span class="n">off</span><span class="p">:</span> <span class="n">off</span> <span class="o">+</span> <span class="n">len_string</span><span class="o">*</span><span class="n">LEN_CHAR</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;latin-1&quot;</span><span class="p">)</span>
+        <span class="n">off</span> <span class="o">+=</span> <span class="n">len_string</span><span class="o">*</span><span class="n">LEN_CHAR</span>
+
+    <span class="n">n_vertices</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;I&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">[</span><span class="n">off</span><span class="p">:</span> <span class="n">off</span> <span class="o">+</span> <span class="n">LEN_INT</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">off</span> <span class="o">+=</span> <span class="n">LEN_INT</span>
+
+    <span class="n">dire_vect_flag</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">version</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">dire_vect_flag</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;B&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">[</span><span class="n">off</span><span class="p">:</span> <span class="n">off</span> <span class="o">+</span> <span class="n">LEN_CHAR</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">off</span> <span class="o">+=</span> <span class="n">LEN_CHAR</span>
+
+    <span class="n">indexes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">buff_scalar</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">buff_vector</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_vertices</span><span class="p">):</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;B&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">[</span><span class="n">off</span><span class="p">:</span><span class="n">off</span> <span class="o">+</span> <span class="n">LEN_CHAR</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">off</span> <span class="o">+=</span> <span class="n">LEN_CHAR</span>
+        <span class="k">if</span> <span class="n">valid</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">indexes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="n">buff_scalar</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;f&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">[</span><span class="n">off</span><span class="p">:</span><span class="n">off</span> <span class="o">+</span> <span class="n">LEN_FLOAT</span><span class="p">])</span>
+            <span class="n">off</span> <span class="o">+=</span> <span class="n">LEN_FLOAT</span>
+            <span class="k">if</span> <span class="n">dire_vect_flag</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">buff_vector</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;fff&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">[</span><span class="n">off</span><span class="p">:</span><span class="n">off</span> <span class="o">+</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">LEN_FLOAT</span><span class="p">])</span>
+                <span class="n">off</span> <span class="o">+=</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">LEN_FLOAT</span>
+        <span class="k">elif</span> <span class="n">valid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Error in decoding stage geometry, invalid Flag&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">unit_name</span> <span class="o">!=</span> <span class="s1">&#39;log_strain&#39;</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;strain is not log strain, but &quot;</span> <span class="o">+</span> <span class="n">unit_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">dire_vect_flag</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">buff_scalar</span><span class="p">,</span> <span class="n">buff_vector</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">buff_scalar</span></div>
+
+
+<div class="viewcode-block" id="read_surface_component_triangles"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.read_surface_component_triangles">[docs]</a><span class="k">def</span> <span class="nf">read_surface_component_triangles</span><span class="p">(</span><span class="n">string_binary</span><span class="p">):</span>
+    <span class="n">base64_bytes</span> <span class="o">=</span> <span class="n">string_binary</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">message_bytes</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">base64_bytes</span><span class="p">)</span>
+    <span class="nb">len</span><span class="p">(</span><span class="n">message_bytes</span><span class="p">)</span>
+
+    <span class="n">len_chain</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">message_bytes</span><span class="p">)</span>
+    <span class="n">n_triangle</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">len_chain</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">LEN_INT</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">3</span> <span class="o">*</span> <span class="n">LEN_INT</span><span class="p">))</span>
+    <span class="n">triangle_unpack</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;II&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">n_triangle</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">)</span>
+    <span class="n">triangle_buff</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">triangle_unpack</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="n">triangle_buff</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">triangle_unpack</span><span class="p">[</span><span class="mi">2</span><span class="o">+</span><span class="n">i</span><span class="o">*</span><span class="mi">3</span><span class="p">],</span>
+                              <span class="n">triangle_unpack</span><span class="p">[</span><span class="mi">2</span><span class="o">+</span><span class="n">i</span><span class="o">*</span><span class="mi">3</span><span class="o">+</span><span class="mi">1</span><span class="p">],</span>
+                              <span class="n">triangle_unpack</span><span class="p">[</span><span class="mi">2</span><span class="o">+</span><span class="n">i</span><span class="o">*</span><span class="mi">3</span><span class="o">+</span><span class="mi">2</span><span class="p">],))</span>
+
+    <span class="k">return</span> <span class="n">triangle_buff</span></div>
+
+
+<div class="viewcode-block" id="read_surface_component_vertices"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.parsers.read_surface_component_vertices">[docs]</a><span class="k">def</span> <span class="nf">read_surface_component_vertices</span><span class="p">(</span><span class="n">string_binary</span><span class="p">):</span>
+    <span class="n">base64_bytes</span> <span class="o">=</span> <span class="n">string_binary</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">message_bytes</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">base64_bytes</span><span class="p">)</span>
+    <span class="n">offset_header</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">calcsize</span><span class="p">(</span><span class="s2">&quot;&lt;I6dI&quot;</span><span class="p">)</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;I6dI&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">[:</span><span class="n">offset_header</span><span class="p">])</span>
+    <span class="n">min_corner</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">])</span>
+    <span class="n">max_corner</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="mi">4</span><span class="p">:</span><span class="mi">7</span><span class="p">])</span>
+    <span class="n">n_vertices</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">off</span> <span class="o">=</span> <span class="n">offset_header</span>
+    <span class="n">vertices_cords_i</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">indexes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_vertices</span><span class="p">):</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;B&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">[</span><span class="n">off</span><span class="p">:</span><span class="n">off</span><span class="o">+</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">off</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">valid</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">indexes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="n">buff_vertices</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s2">&quot;&lt;III&quot;</span><span class="p">,</span> <span class="n">message_bytes</span><span class="p">[</span><span class="n">off</span><span class="p">:</span><span class="n">off</span><span class="o">+</span><span class="mi">12</span><span class="p">])</span>
+            <span class="n">vertices_cords_i</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">buff_vertices</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                     <span class="n">buff_vertices</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                     <span class="n">buff_vertices</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+            <span class="n">off</span> <span class="o">=</span> <span class="n">off</span> <span class="o">+</span> <span class="mi">3</span><span class="o">*</span><span class="n">LEN_INT</span>
+        <span class="k">elif</span> <span class="n">valid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Error in decoding stage geometry, invalid Flag&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">off</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">message_bytes</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Error in decoding stage geometry, invalid binary message length&quot;</span><span class="p">)</span>
+
+    <span class="n">vertices_cords_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">vertices_cords_i</span><span class="p">)</span>
+    <span class="n">vertices_cords_f</span> <span class="o">=</span> <span class="n">vertices_cords_i</span> <span class="o">/</span> <span class="n">MAX_UINT</span>
+    <span class="k">if</span> <span class="n">n_vertices</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">vertices_cords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">max_corner</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">min_corner</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">*</span> <span class="n">vertices_cords_f</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">min_corner</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)])</span>
+
+    <span class="n">vertices_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">indexes</span><span class="p">)):</span>
+        <span class="n">vertices_dict</span><span class="p">[</span><span class="n">indexes</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">vertices_cords</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">vertices_dict</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">DIC Results Exchange Format</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, Chair of Forming and Machining Processes, TU Dresden.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 6.1.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

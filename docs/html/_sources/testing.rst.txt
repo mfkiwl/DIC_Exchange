@@ -1,0 +1,21 @@
+testing package
+===============
+
+Submodules
+----------
+
+testing.test module
+-------------------
+
+.. automodule:: testing.test
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: testing
+   :members:
+   :undoc-members:
+   :show-inheritance:
