@@ -13,15 +13,14 @@
 
 import numpy as np
 import h5py
-import os
+from typing import NoReturn
+from DIC_Exchange import mesh_utils
 
 
-class DIC_Result():
-
+class DIC_Result:
     """
     Class providing the data models and input output methods for handling DIC results for material testing
     """
-
 
     def __init__(self, coords: np.ndarray, strains: np.ndarray, force: np.ndarray, time: np.ndarray, mesh: np.ndarray):
         """
@@ -42,12 +41,29 @@ class DIC_Result():
         assert isinstance(mesh, np.ndarray)
 
         self.strains = strains
+        """Strains array shape=(n_timesteps, n_points, [eps_xx, eps_yy, eps_xy])"""
         self.coords = coords
+        """Coordinate array shape=(n_timesteps, n_points, [x, y, z])"""
         self.force = force
+        """Value of the force as an array shape=(n_timesteps,)"""
         self.time = time
-        self.mesh = mesh
+        """Value of the time as an array shape=(n_timesteps,)"""
+        self._mesh = mesh
         self.vectorize = False
         self.meta_data = {"version": "0.1"}
+
+    def get_mesh(self):
+        return self._mesh
+
+    def set_mesh(self, mesh):
+        self._mesh = mesh
+        self._init_mesh_property()
+
+    mesh = property(get_mesh, set_mesh, doc="""mesh array shape=(n_elements, 3)""")
+
+    def _init_mesh_property(self):
+        self.mesh_holes = mesh_utils.mesh_holes(self._mesh)
+        self.has_mesh_holes = mesh_utils.has_mesh_hole(self._mesh)
 
     def save_to_hdf5(self, path_h5: str) -> None:
         """
@@ -55,7 +71,6 @@ class DIC_Result():
         :param str path_h5: path to write the file
         """
         with h5py.File(path_h5, "w") as hdf5:
-
             # Saving metadata
             for a_meta_key in self.meta_data.keys():
                 hdf5.attrs[a_meta_key] = self.meta_data[a_meta_key]
@@ -71,18 +86,17 @@ class DIC_Result():
             hdf5["vector"].create_dataset("coordinates", data=self.coords)
 
             # Saving the mesh
-            hdf5.create_dataset("mesh", data=self.mesh)
+            hdf5.create_dataset("mesh", data=self._mesh)
 
     @classmethod
     def load_from_hdf5(cls, path: str) -> "DIC_Result":
         """
-        Load an hdf5 file representing an DIC_Result object
+        Load a hdf5 file representing an DIC_Result object
         :param str path: path of the file to write
         :return DIC_Result: content of the hdf5 file in a DIC_Result object
         """
 
         with h5py.File(path, "r") as h5file:
-
             # read meta data
 
             buff_meta_data = {}
@@ -106,3 +120,70 @@ class DIC_Result():
             load_hdf5.meta_data = buff_meta_data
 
         return load_hdf5
+
+    def __getitem__(self, item: str) -> np.ndarray:
+
+        """
+        Get specific value of strain or coords
+        :param item:
+        :return:
+        """
+
+        if type(item) == str:
+            if "eps" in item:
+                # strain
+                if item == "eps":
+                    return self.strains
+                elif item == "eps_xx":
+                    return self.strains[:, :, 0]
+                elif item == "eps_yy":
+                    return self.strains[:, :, 1]
+                elif item == "eps_xy":
+                    return self.strains[:, :, 2]
+                elif item == "eps_1":
+                    return self.get_principal_strains(which=1)
+                elif item == "eps_2":
+                    return self.get_principal_strains(which=2)
+            elif item == "x":
+                return self.coords[:, :, 0]
+            elif item == "y":
+                return self.coords[:, :, 1]
+            elif item == "z":
+                return self.coords[:, :, 2]
+            elif item == "force":
+                return self.force
+            elif item == "time":
+                return self.time
+        raise KeyError(str(item) + " is not a valuable key")
+
+    def get_principal_strains(self, which: int = 1) -> np.ndarray:
+        """
+        Compute the principal strain
+        :param int which: 1 or 2 to get first or second principal strain
+        :return: computed principal strain
+        """
+        if which == 1:
+            return (self.strains[:, :, 0] + self.strains[:, :, 1]) / 2 + \
+            np.sqrt(((self.strains[:, :, 0] + self.strains[:, :, 1]) ** 2) / 2 - self.strains[:, :, 2] ** 2)
+        elif which == 2:
+            return (self.strains[:, :, 0] + self.strains[:, :, 1]) / 2 - \
+            np.sqrt(((self.strains[:, :, 0] + self.strains[:, :, 1]) ** 2) / 2 - self.strains[:, :, 2] ** 2)
+        else:
+            raise KeyError("There are only two principal strain, 1 and 2")
+
+    def translate(self, vector: "np.ndarray(shape=(3,))") -> NoReturn:
+        """
+        Translate the coordinate system
+        :param np.ndarray vector: translation vector
+        """
+
+        self.coords + vector
+
+    def rotate(self, matrix: 'np.ndarray(shape=(3,3))'):
+        """
+        Translate the coordinate system
+        :param np.ndarray matrix: rotation matrix
+        """
+
+        self.coords = np.einsum("ik, ...k->...i", matrix, self.coords)
+        self.strains = np.einsum("ik, ...kj -> ij", matrix, self.strains)

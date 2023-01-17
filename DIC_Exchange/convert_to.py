@@ -116,7 +116,7 @@ def _numpyfi(coords_o, strains_o, force_o, time_o, mesh_o, fstep=0, lstep=-1, st
         for a_el in element_set:
             buff.append(np.array([strains_o["eps_xx"][a_stage][a_el],
                                   strains_o["eps_yy"][a_stage][a_el],
-                                  strains_o["eps_xx"][a_stage][a_el]]))
+                                  strains_o["eps_xy"][a_stage][a_el]]))
         strains_np.append(buff)
     strains = np.array(strains_np)[:, :, :, 0]
 

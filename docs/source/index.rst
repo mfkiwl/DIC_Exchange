@@ -10,6 +10,10 @@ Welcome to DIC Results Exchange Format's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+Modules
+=======================================================
+
+DIC_Exchange
 
 
 Indices and tables
