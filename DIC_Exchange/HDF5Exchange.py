@@ -33,6 +33,7 @@ class DIC_Result:
         :param np.ndarray mesh: mesh represented by an array of shape (q, 3) with the value corresponding to coords and strains
         """
 
+
         assert isinstance(coords, np.ndarray)
         assert isinstance(strains, np.ndarray)
         assert isinstance(coords, np.ndarray)
@@ -49,8 +50,15 @@ class DIC_Result:
         self.time = time
         """Value of the time as an array shape=(n_timesteps,)"""
         self._mesh = mesh
-        self.vectorize = False
+        """private attribute containing the mesh"""
+
         self.meta_data = {"version": "0.1"}
+        """Some metadata which are accesible to the users and can will be written in the file"""
+
+        self.node_normals = None
+        """normal to the surface at the node coordinnates, usefull to handle local coordinate systems"""
+
+        self._init_mesh_property()
 
     def get_mesh(self):
         return self._mesh
@@ -64,6 +72,7 @@ class DIC_Result:
     def _init_mesh_property(self):
         self.mesh_holes = mesh_utils.mesh_holes(self._mesh)
         self.has_mesh_holes = mesh_utils.has_mesh_hole(self._mesh)
+        self.node_normals = mesh_utils.node_surface_normal(self._mesh, self.coords)
 
     def save_to_hdf5(self, path_h5: str) -> None:
         """
@@ -179,11 +188,42 @@ class DIC_Result:
 
         self.coords + vector
 
+
     def rotate(self, matrix: 'np.ndarray(shape=(3,3))'):
         """
         Translate the coordinate system
         :param np.ndarray matrix: rotation matrix
         """
 
+        # rotating the coordinate is just a matrix product
         self.coords = np.einsum("ik, ...k->...i", matrix, self.coords)
-        self.strains = np.einsum("ik, ...kj -> ij", matrix, self.strains)
+
+        # However rotating the strain is more complicated because the strain
+        # must be computed in the local coordinate system
+        old_e_x = np.cross(self.node_normals, np.array([0, 1, 0]), axis=-1)
+        norm_old_e_x = np.linalg.norm(old_e_x, axis=-1)
+        old_e_x[:, :, 0] /= norm_old_e_x
+        old_e_x[:, :, 1] /= norm_old_e_x
+        old_e_x[:, :, 2] /= norm_old_e_x
+        new_e_x = np.einsum("ik, ...k -> ...i", matrix, old_e_x)
+
+        cos_th = np.einsum("...i, ...i -> ...", old_e_x, new_e_x)
+
+        cp_e_x = np.cross(old_e_x, new_e_x, axis=-1)
+        sgn_th = np.sign(np.einsum("...i, ...j -> ...", cp_e_x, self.node_normals))
+        sin_th = np.linalg.norm(cp_e_x, axis=-1) * sgn_th
+
+        new_strains = np.zeros_like(self.strains)
+        new_strains[:, :, 0] = self.strains[:, :, 0]*cos_th**2 \
+                               + self.strains[:, :, 1]*sin_th**2 \
+                               + self.strains[:, :, 2]*sin_th*cos_th
+
+        new_strains[:, :, 1] = self.strains[:, :, 0]*sin_th**2 \
+                               + self.strains[:, :, 1]*cos_th**2 \
+                               - self.strains[:, :, 2]*sin_th*cos_th
+
+        new_strains[:, :, 2] = 2*(self.strains[:, :, 0] - self.strains[:, :, 1])*sin_th*cos_th \
+                               + self.strains[:, :, 2]*(cos_th**2 - sin_th**2)
+
+        self.strains = new_strains
+        self.node_normals = np.einsum("ik, ...k -> ...i", matrix, self.node_normals)

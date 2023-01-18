@@ -11,6 +11,34 @@
 #      You should have received a copy of the GNU Affero General Public License
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import numpy as np
+
+
+def node_surface_normal(mesh, coords):
+    nodes = np.arange(coords.shape[1])
+
+    node_connection = dict()
+    for a_node in nodes:
+        is_in_el = np.sum(np.isin(mesh, a_node), axis=1, dtype=bool)
+        node_connection[a_node] = np.unique(mesh[is_in_el])
+
+    n_ts, n_node, _ = coords.shape
+    normals = np.zeros(coords.shape)
+    for i_node in range(n_node):
+        points = [coords[:, i_node, :], ]
+        for a_node in node_connection[i_node]:
+            points.append(coords[:, a_node, :])
+        points = np.array(points)
+        for i_ts in range(n_ts):
+            points_ts = points[:, i_ts, :]
+            center = np.mean(points_ts, axis=0)
+            points_ts = points_ts - center
+            u, d, vh = np.linalg.svd(points_ts.T @ points_ts)
+            norm = u[:, -1]
+            norm = norm / np.linalg.norm(norm)
+            normals[i_ts, i_node, :] = norm
+    return normals
+
 
 def mesh_boundaries(mesh: "np.ndarray(shape=q, 3)") -> list:
     """
