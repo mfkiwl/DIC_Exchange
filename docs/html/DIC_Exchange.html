@@ -19,8 +19,7 @@
         <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="DIC_Exchange" href="modules.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -38,38 +37,62 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="modules.html">DIC_Exchange</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">DIC_Exchange package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#module-DIC_Exchange.HDF5Exchange">DIC_Exchange.HDF5Exchange module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result"><code class="docutils literal notranslate"><span class="pre">DIC_Result</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="#module-DIC_Exchange.convert_to">DIC_Exchange.convert_to module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.convert_to.load_from"><code class="docutils literal notranslate"><span class="pre">load_from()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="#module-DIC_Exchange.parsers">DIC_Exchange.parsers module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.parsers.ABC_parser"><code class="docutils literal notranslate"><span class="pre">ABC_parser</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.parsers.ARAMIS_XML_Parser"><code class="docutils literal notranslate"><span class="pre">ARAMIS_XML_Parser</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.parsers.DICe_Parser"><code class="docutils literal notranslate"><span class="pre">DICe_Parser</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.parsers.read_file"><code class="docutils literal notranslate"><span class="pre">read_file()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.parsers.read_header"><code class="docutils literal notranslate"><span class="pre">read_header()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.parsers.read_measured"><code class="docutils literal notranslate"><span class="pre">read_measured()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.parsers.read_nominal"><code class="docutils literal notranslate"><span class="pre">read_nominal()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.parsers.read_surface_component_scalar"><code class="docutils literal notranslate"><span class="pre">read_surface_component_scalar()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.parsers.read_surface_component_triangles"><code class="docutils literal notranslate"><span class="pre">read_surface_component_triangles()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#DIC_Exchange.parsers.read_surface_component_vertices"><code class="docutils literal notranslate"><span class="pre">read_surface_component_vertices()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="#module-DIC_Exchange">Module contents</a></li>
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">DIC_Exchange package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-DIC_Exchange.HDF5Exchange">DIC_Exchange.HDF5Exchange module</a><ul>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result"><code class="docutils literal notranslate"><span class="pre">DIC_Result</span></code></a><ul>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.coords"><code class="docutils literal notranslate"><span class="pre">DIC_Result.coords</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.force"><code class="docutils literal notranslate"><span class="pre">DIC_Result.force</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.get_mesh"><code class="docutils literal notranslate"><span class="pre">DIC_Result.get_mesh()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.get_principal_strains"><code class="docutils literal notranslate"><span class="pre">DIC_Result.get_principal_strains()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.load_from_hdf5"><code class="docutils literal notranslate"><span class="pre">DIC_Result.load_from_hdf5()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.mesh"><code class="docutils literal notranslate"><span class="pre">DIC_Result.mesh</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.meta_data"><code class="docutils literal notranslate"><span class="pre">DIC_Result.meta_data</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.node_normals"><code class="docutils literal notranslate"><span class="pre">DIC_Result.node_normals</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.rotate"><code class="docutils literal notranslate"><span class="pre">DIC_Result.rotate()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.save_to_hdf5"><code class="docutils literal notranslate"><span class="pre">DIC_Result.save_to_hdf5()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.set_mesh"><code class="docutils literal notranslate"><span class="pre">DIC_Result.set_mesh()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.strains"><code class="docutils literal notranslate"><span class="pre">DIC_Result.strains</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.time"><code class="docutils literal notranslate"><span class="pre">DIC_Result.time</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result.translate"><code class="docutils literal notranslate"><span class="pre">DIC_Result.translate()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
+<li><a class="reference internal" href="#module-DIC_Exchange.convert_to">DIC_Exchange.convert_to module</a><ul>
+<li><a class="reference internal" href="#DIC_Exchange.convert_to.load_from"><code class="docutils literal notranslate"><span class="pre">load_from()</span></code></a></li>
 </ul>
-
+</li>
+<li><a class="reference internal" href="#module-DIC_Exchange.parsers">DIC_Exchange.parsers module</a><ul>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.ABC_parser"><code class="docutils literal notranslate"><span class="pre">ABC_parser</span></code></a><ul>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.ABC_parser.parse"><code class="docutils literal notranslate"><span class="pre">ABC_parser.parse()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.ARAMIS_XML_Parser"><code class="docutils literal notranslate"><span class="pre">ARAMIS_XML_Parser</span></code></a><ul>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.ARAMIS_XML_Parser.parse"><code class="docutils literal notranslate"><span class="pre">ARAMIS_XML_Parser.parse()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.ARAMIS_XML_Parser.version"><code class="docutils literal notranslate"><span class="pre">ARAMIS_XML_Parser.version</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.DICe_Parser"><code class="docutils literal notranslate"><span class="pre">DICe_Parser</span></code></a><ul>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.DICe_Parser.parse"><code class="docutils literal notranslate"><span class="pre">DICe_Parser.parse()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.read_file"><code class="docutils literal notranslate"><span class="pre">read_file()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.read_header"><code class="docutils literal notranslate"><span class="pre">read_header()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.read_measured"><code class="docutils literal notranslate"><span class="pre">read_measured()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.read_nominal"><code class="docutils literal notranslate"><span class="pre">read_nominal()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.read_surface_component_scalar"><code class="docutils literal notranslate"><span class="pre">read_surface_component_scalar()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.read_surface_component_triangles"><code class="docutils literal notranslate"><span class="pre">read_surface_component_triangles()</span></code></a></li>
+<li><a class="reference internal" href="#DIC_Exchange.parsers.read_surface_component_vertices"><code class="docutils literal notranslate"><span class="pre">read_surface_component_vertices()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-DIC_Exchange">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
         </div>
       </div>
     </nav>
@@ -84,7 +107,6 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home"></a></li>
-          <li class="breadcrumb-item"><a href="modules.html">DIC_Exchange</a></li>
       <li class="breadcrumb-item active">DIC_Exchange package</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/DIC_Exchange.rst.txt" rel="nofollow"> View page source</a>
@@ -133,11 +155,6 @@
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="DIC_Exchange.HDF5Exchange.DIC_Result.interpolate">
-<span class="sig-name descname"><span class="pre">interpolate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kernel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/DIC_Exchange/HDF5Exchange.html#DIC_Result.interpolate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DIC_Exchange.HDF5Exchange.DIC_Result.interpolate" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="DIC_Exchange.HDF5Exchange.DIC_Result.load_from_hdf5">
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_hdf5</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#DIC_Exchange.HDF5Exchange.DIC_Result" title="DIC_Exchange.HDF5Exchange.DIC_Result"><span class="pre">DIC_Result</span></a></span></span><a class="reference internal" href="_modules/DIC_Exchange/HDF5Exchange.html#DIC_Result.load_from_hdf5"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#DIC_Exchange.HDF5Exchange.DIC_Result.load_from_hdf5" title="Permalink to this definition"></a></dt>
 <dd><p>Load a hdf5 file representing an DIC_Result object
@@ -149,6 +166,18 @@
 <dt class="sig sig-object py" id="DIC_Exchange.HDF5Exchange.DIC_Result.mesh">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mesh</span></span><a class="headerlink" href="#DIC_Exchange.HDF5Exchange.DIC_Result.mesh" title="Permalink to this definition"></a></dt>
 <dd><p>mesh array shape=(n_elements, 3)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="DIC_Exchange.HDF5Exchange.DIC_Result.meta_data">
+<span class="sig-name descname"><span class="pre">meta_data</span></span><a class="headerlink" href="#DIC_Exchange.HDF5Exchange.DIC_Result.meta_data" title="Permalink to this definition"></a></dt>
+<dd><p>Some metadata which are accesible to the users and can will be written in the file</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="DIC_Exchange.HDF5Exchange.DIC_Result.node_normals">
+<span class="sig-name descname"><span class="pre">node_normals</span></span><a class="headerlink" href="#DIC_Exchange.HDF5Exchange.DIC_Result.node_normals" title="Permalink to this definition"></a></dt>
+<dd><p>normal to the surface at the node coordinnates, usefull to handle local coordinate systems</p>
 </dd></dl>
 
 <dl class="py method">
@@ -285,9 +314,7 @@
 
            </div>
           </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="modules.html" class="btn btn-neutral float-left" title="DIC_Exchange" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-    </div>
+          <footer>
 
   <hr/>
 

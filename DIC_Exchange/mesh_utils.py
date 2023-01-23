@@ -10,9 +10,9 @@
 #      GNU Affero General Public License for more details.
 #      You should have received a copy of the GNU Affero General Public License
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import time
 
 import numpy as np
-
 
 def node_surface_normal(mesh, coords):
     nodes = np.arange(coords.shape[1])
@@ -23,20 +23,31 @@ def node_surface_normal(mesh, coords):
         node_connection[a_node] = np.unique(mesh[is_in_el])
 
     n_ts, n_node, _ = coords.shape
-    normals = np.zeros(coords.shape)
+
+    matrix = []
+
     for i_node in range(n_node):
         points = [coords[:, i_node, :], ]
         for a_node in node_connection[i_node]:
             points.append(coords[:, a_node, :])
         points = np.array(points)
-        for i_ts in range(n_ts):
-            points_ts = points[:, i_ts, :]
-            center = np.mean(points_ts, axis=0)
-            points_ts = points_ts - center
-            u, d, vh = np.linalg.svd(points_ts.T @ points_ts)
-            norm = u[:, -1]
-            norm = norm / np.linalg.norm(norm)
-            normals[i_ts, i_node, :] = norm
+        center = np.mean(points, axis=0)
+        points = points - center
+        points = points.swapaxes(0,1)
+
+        matrix_series = np.matmul(points.swapaxes(-1, 1), points)
+        matrix.append(matrix_series)
+
+    matrix = np.array(matrix)
+
+    u, d, vh = np.linalg.svd(matrix, hermitian=True)
+    normals = u[:, :, :, -1].swapaxes(0,1)
+
+    norm = np.linalg.norm(normals, axis=-1)
+    normals[:, :, 0] /= norm
+    normals[:, :, 1] /= norm
+    normals[:, :, 2] /= norm
+
     return normals
 
 

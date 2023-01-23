@@ -36,10 +36,8 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../modules.html">DIC_Exchange</a></li>
-</ul>
-
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
         </div>
       </div>
     </nav>
@@ -84,7 +82,7 @@
 <span class="kn">from</span> <span class="nn">DIC_Exchange</span> <span class="kn">import</span> <span class="n">mesh_utils</span>
 
 
-<div class="viewcode-block" id="DIC_Result"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.HDF5Exchange.DIC_Result">[docs]</a><span class="k">class</span> <span class="nc">DIC_Result</span><span class="p">():</span>
+<div class="viewcode-block" id="DIC_Result"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.HDF5Exchange.DIC_Result">[docs]</a><span class="k">class</span> <span class="nc">DIC_Result</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Class providing the data models and input output methods for handling DIC results for material testing</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -99,6 +97,7 @@
 <span class="sd">        :param np.ndarray time: value of the time in an array (n,)</span>
 <span class="sd">        :param np.ndarray mesh: mesh represented by an array of shape (q, 3) with the value corresponding to coords and strains</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+
 
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">strains</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
@@ -116,8 +115,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">time</span>
         <span class="sd">&quot;&quot;&quot;Value of the time as an array shape=(n_timesteps,)&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span> <span class="o">=</span> <span class="n">mesh</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">vectorize</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="sd">&quot;&quot;&quot;private attribute containing the mesh&quot;&quot;&quot;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">meta_data</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;0.1&quot;</span><span class="p">}</span>
+        <span class="sd">&quot;&quot;&quot;Some metadata which are accesible to the users and can will be written in the file&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_normals</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="sd">&quot;&quot;&quot;normal to the surface at the node coordinnates, usefull to handle local coordinate systems&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_init_mesh_property</span><span class="p">()</span>
 
 <div class="viewcode-block" id="DIC_Result.get_mesh"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.HDF5Exchange.DIC_Result.get_mesh">[docs]</a>    <span class="k">def</span> <span class="nf">get_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span></div>
@@ -131,6 +137,7 @@
     <span class="k">def</span> <span class="nf">_init_mesh_property</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mesh_holes</span> <span class="o">=</span> <span class="n">mesh_utils</span><span class="o">.</span><span class="n">mesh_holes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">has_mesh_holes</span> <span class="o">=</span> <span class="n">mesh_utils</span><span class="o">.</span><span class="n">has_mesh_hole</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_normals</span> <span class="o">=</span> <span class="n">mesh_utils</span><span class="o">.</span><span class="n">node_surface_normal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">coords</span><span class="p">)</span>
 
 <div class="viewcode-block" id="DIC_Result.save_to_hdf5"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.HDF5Exchange.DIC_Result.save_to_hdf5">[docs]</a>    <span class="k">def</span> <span class="nf">save_to_hdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path_h5</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -246,17 +253,45 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">coords</span> <span class="o">+</span> <span class="n">vector</span></div>
 
+
 <div class="viewcode-block" id="DIC_Result.rotate"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.HDF5Exchange.DIC_Result.rotate">[docs]</a>    <span class="k">def</span> <span class="nf">rotate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">matrix</span><span class="p">:</span> <span class="s1">&#39;np.ndarray(shape=(3,3))&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Translate the coordinate system</span>
 <span class="sd">        :param np.ndarray matrix: rotation matrix</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
+        <span class="c1"># rotating the coordinate is just a matrix product</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ik, ...k-&gt;...i&quot;</span><span class="p">,</span> <span class="n">matrix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">coords</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">strains</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ik, ...kj -&gt; ij&quot;</span><span class="p">,</span> <span class="n">matrix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="DIC_Result.interpolate"><a class="viewcode-back" href="../../DIC_Exchange.html#DIC_Exchange.HDF5Exchange.DIC_Result.interpolate">[docs]</a>    <span class="k">def</span> <span class="nf">interpolate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span><span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;kernel&quot;</span><span class="p">,</span> <span class="n">sigma</span><span class="p">:</span><span class="nb">float</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
-        <span class="k">pass</span></div></div>
+        <span class="c1"># However rotating the strain is more complicated because the strain</span>
+        <span class="c1"># must be computed in the local coordinate system</span>
+        <span class="n">old_e_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">node_normals</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">norm_old_e_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">old_e_x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">old_e_x</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="n">norm_old_e_x</span>
+        <span class="n">old_e_x</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">/=</span> <span class="n">norm_old_e_x</span>
+        <span class="n">old_e_x</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">/=</span> <span class="n">norm_old_e_x</span>
+        <span class="n">new_e_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ik, ...k -&gt; ...i&quot;</span><span class="p">,</span> <span class="n">matrix</span><span class="p">,</span> <span class="n">old_e_x</span><span class="p">)</span>
+
+        <span class="n">cos_th</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;...i, ...i -&gt; ...&quot;</span><span class="p">,</span> <span class="n">old_e_x</span><span class="p">,</span> <span class="n">new_e_x</span><span class="p">)</span>
+
+        <span class="n">cp_e_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">old_e_x</span><span class="p">,</span> <span class="n">new_e_x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">sgn_th</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;...i, ...j -&gt; ...&quot;</span><span class="p">,</span> <span class="n">cp_e_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_normals</span><span class="p">))</span>
+        <span class="n">sin_th</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">cp_e_x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">sgn_th</span>
+
+        <span class="n">new_strains</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">)</span>
+        <span class="n">new_strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">cos_th</span><span class="o">**</span><span class="mi">2</span> \
+                               <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">sin_th</span><span class="o">**</span><span class="mi">2</span> \
+                               <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">sin_th</span><span class="o">*</span><span class="n">cos_th</span>
+
+        <span class="n">new_strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">sin_th</span><span class="o">**</span><span class="mi">2</span> \
+                               <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">cos_th</span><span class="o">**</span><span class="mi">2</span> \
+                               <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">sin_th</span><span class="o">*</span><span class="n">cos_th</span>
+
+        <span class="n">new_strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="n">sin_th</span><span class="o">*</span><span class="n">cos_th</span> \
+                               <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">strains</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="n">cos_th</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">sin_th</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">strains</span> <span class="o">=</span> <span class="n">new_strains</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_normals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ik, ...k -&gt; ...i&quot;</span><span class="p">,</span> <span class="n">matrix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_normals</span><span class="p">)</span></div></div>
 </pre></div>
 
            </div>

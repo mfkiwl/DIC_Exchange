@@ -22,7 +22,7 @@ class DIC_Result:
     Class providing the data models and input output methods for handling DIC results for material testing
     """
 
-    def __init__(self, coords: np.ndarray, strains: np.ndarray, force: np.ndarray, time: np.ndarray, mesh: np.ndarray):
+    def __init__(self, coords: np.ndarray, strains: np.ndarray, force: np.ndarray, time: np.ndarray, mesh: np.ndarray, node_normal:np.ndarray=None):
         """
         Initiating a DIC_Result object, vectorize or not,
         with n timestep, m points and q elements
@@ -31,6 +31,7 @@ class DIC_Result:
         :param np.ndarray force: time series of the force in an array (n,)
         :param np.ndarray time: value of the time in an array (n,)
         :param np.ndarray mesh: mesh represented by an array of shape (q, 3) with the value corresponding to coords and strains
+        :param np.ndarray node_normal: local normal at node, will be computed if not provided
         """
 
 
@@ -40,6 +41,7 @@ class DIC_Result:
         assert isinstance(force, np.ndarray)
         assert isinstance(time, np.ndarray)
         assert isinstance(mesh, np.ndarray)
+        assert isinstance(mesh, np.ndarray) or mesh is None
 
         self.strains = strains
         """Strains array shape=(n_timesteps, n_points, [eps_xx, eps_yy, eps_xy])"""
@@ -55,7 +57,9 @@ class DIC_Result:
         self.meta_data = {"version": "0.1"}
         """Some metadata which are accesible to the users and can will be written in the file"""
 
-        self.node_normals = None
+        self.node_normals = node_normal
+        if self.node_normals is None:
+            self._compute_node_normal()
         """normal to the surface at the node coordinnates, usefull to handle local coordinate systems"""
 
         self._init_mesh_property()
@@ -71,7 +75,9 @@ class DIC_Result:
 
     def _init_mesh_property(self):
         self.mesh_holes = mesh_utils.mesh_holes(self._mesh)
-        self.has_mesh_holes = mesh_utils.has_mesh_hole(self._mesh)
+        self.has_mesh_holes = len(self.mesh_holes) > 1
+
+    def _compute_node_normal(self):
         self.node_normals = mesh_utils.node_surface_normal(self._mesh, self.coords)
 
     def save_to_hdf5(self, path_h5: str) -> None:
@@ -87,12 +93,13 @@ class DIC_Result:
             # Saving the scalars
             hdf5.create_group("scalar")
             hdf5["scalar"].create_dataset("time", data=self.time)
-            hdf5["scalar"].create_dataset("force", data=self.time)
+            hdf5["scalar"].create_dataset("force", data=self.force)
 
             # Saving the vector information
             hdf5.create_group("vector")
             hdf5["vector"].create_dataset("strains", data=self.strains)
             hdf5["vector"].create_dataset("coordinates", data=self.coords)
+            hdf5["vector"].create_dataset("node_normals", data=self.node_normals)
 
             # Saving the mesh
             hdf5.create_dataset("mesh", data=self._mesh)
@@ -110,7 +117,7 @@ class DIC_Result:
 
             buff_meta_data = {}
 
-            for el in h5file:
+            for el in h5file.attrs:
                 buff_meta_data[el] = h5file.attrs[el]
 
             # read scalar
@@ -119,13 +126,17 @@ class DIC_Result:
             time = np.array(h5file["scalar"]["force"])
 
             # read vector
-            coords = np.array(h5file["scalar"]["coordinates"])
-            strains = np.array(h5file["scalar"]["strains"])
+            coords = np.array(h5file["vector"]["coordinates"])
+            strains = np.array(h5file["vector"]["strains"])
+            try:
+                node_normals = np.array(h5file["vector"]["node_normals"])
+            except KeyError:
+                node_normals = None
 
             # read mesh
             mesh = np.array(h5file["mesh"])
 
-            load_hdf5 = cls(coords, strains, force, time, mesh)
+            load_hdf5 = cls(coords, strains, force, time, mesh, node_normals)
             load_hdf5.meta_data = buff_meta_data
 
         return load_hdf5
