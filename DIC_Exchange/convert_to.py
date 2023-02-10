@@ -76,7 +76,8 @@ def load_from(path: str, file_type: str = "ARAMIS_XML",
                                                             fstep=the_first_time_step,
                                                             lstep=the_last_time_step, step=thinning)
 
-    return DIC_Exchange.HDF5Exchange.DIC_Result(coords_a, strains_a, force_a, time_a, mesh_a)
+    return DIC_Exchange.HDF5Exchange.DIC_Result(coords=coords_a, strains=strains_a, force=force_a,
+                                                time=time_a, mesh=mesh_a)
 
 
 def _numpyfi(coords_o, strains_o, force_o, time_o, mesh_o, fstep=0, lstep=-1, step=1):

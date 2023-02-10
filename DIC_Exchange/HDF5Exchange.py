@@ -122,8 +122,8 @@ class DIC_Result:
 
             # read scalar
 
-            force = np.array(h5file["scalar"]["time"])
-            time = np.array(h5file["scalar"]["force"])
+            force = np.array(h5file["scalar"]["force"])
+            time = np.array(h5file["scalar"]["time"])
 
             # read vector
             coords = np.array(h5file["vector"]["coordinates"])

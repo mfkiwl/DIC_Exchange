@@ -22,5 +22,12 @@ setup(
     author='Chair of Forming and Machining Processes, TU Dresden',
     author_email='remi.lafarge@tu-dresden.de',
     description='A proposition for a standardised exchange file format for 2D/3D-DIC'
-                ' results for material testing purposes, based on HDF5'
+                ' results for material testing purposes, based on HDF5',
+    install_requires=[
+            'setuptools>=67.2.0',
+            'numpy~=1.23.4',
+            'h5py~=3.7.0',
+            'tqdm',
+            'matplotlib~=3.6.2'
+        ],
 )
