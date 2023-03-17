@@ -15,9 +15,9 @@ from setuptools import setup
 
 setup(
     name='DIC_Exchange',
-    version='0.1a',
+    version='0.1b',
     packages=['DIC_Exchange'],
-    url='',
+    url='https://github.com/tud-if-ff/DIC_Exchange',
     license='AGPL v3.0',
     author='Chair of Forming and Machining Processes, TU Dresden',
     author_email='remi.lafarge@tu-dresden.de',
@@ -30,4 +30,8 @@ setup(
             'tqdm',
             'matplotlib~=3.6.2'
         ],
+    classifiers=['Private :: Do Not Upload',
+                 'Development Status :: 3 - Alpha',
+                 'Programming Language :: Python :: 3',
+                 'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)']
 )
