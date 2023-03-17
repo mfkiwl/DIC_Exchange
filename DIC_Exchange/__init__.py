@@ -12,4 +12,4 @@
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from DIC_Exchange.convert_to import load_from
-from HDF5Exchange import DIC_Result
+from DIC_Exchange.HDF5Exchange import DIC_Result
