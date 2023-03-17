@@ -22,7 +22,8 @@ class DIC_Result:
     Class providing the data models and input output methods for handling DIC results for material testing
     """
 
-    def __init__(self, coords: np.ndarray, strains: np.ndarray, force: np.ndarray, time: np.ndarray, mesh: np.ndarray, node_normal:np.ndarray=None):
+    def __init__(self, coords: np.ndarray, strains: np.ndarray, force: np.ndarray, time: np.ndarray, mesh: np.ndarray,
+                 node_normal: np.ndarray = None):
         """
         Initiating a DIC_Result object, vectorize or not,
         with n timestep, m points and q elements
@@ -33,15 +34,6 @@ class DIC_Result:
         :param np.ndarray mesh: mesh represented by an array of shape (q, 3) with the value corresponding to coords and strains
         :param np.ndarray node_normal: local normal at node, will be computed if not provided
         """
-
-
-        assert isinstance(coords, np.ndarray)
-        assert isinstance(strains, np.ndarray)
-        assert isinstance(coords, np.ndarray)
-        assert isinstance(force, np.ndarray)
-        assert isinstance(time, np.ndarray)
-        assert isinstance(mesh, np.ndarray)
-        assert isinstance(mesh, np.ndarray) or mesh is None
 
         self.strains = strains
         """Strains array shape=(n_timesteps, n_points, [eps_xx, eps_yy, eps_xy])"""
@@ -55,29 +47,42 @@ class DIC_Result:
         """private attribute containing the mesh"""
 
         self.meta_data = {"version": "0.1"}
-        """Some metadata which are accesible to the users and can will be written in the file"""
+        """Some metadata which are accessible to the users and can will be written in the file"""
 
         self.node_normals = node_normal
         if self.node_normals is None:
             self._compute_node_normal()
-        """normal to the surface at the node coordinnates, usefull to handle local coordinate systems"""
+        """normal to the surface at the node coordinates, usefull to handle local coordinate systems"""
 
         self._init_mesh_property()
 
     def get_mesh(self):
+        """
+        getter for the mesh
+        """
         return self._mesh
 
     def set_mesh(self, mesh):
+        """
+        setter for the mesh
+        """
         self._mesh = mesh
         self._init_mesh_property()
 
     mesh = property(get_mesh, set_mesh, doc="""mesh array shape=(n_elements, 3)""")
 
     def _init_mesh_property(self):
+        """
+        Compute the mesh properties
+        """
         self.mesh_holes = mesh_utils.mesh_holes(self._mesh)
         self.has_mesh_holes = len(self.mesh_holes) > 1
 
     def _compute_node_normal(self):
+        """
+        Compute the local normal to the surface
+        :return:
+        """
         self.node_normals = mesh_utils.node_surface_normal(self._mesh, self.coords)
 
     def save_to_hdf5(self, path_h5: str) -> None:
@@ -184,10 +189,10 @@ class DIC_Result:
         """
         if which == 1:
             return (self.strains[:, :, 0] + self.strains[:, :, 1]) / 2 + \
-            np.sqrt(((self.strains[:, :, 0] + self.strains[:, :, 1]) ** 2) / 2 - self.strains[:, :, 2] ** 2)
+                np.sqrt(((self.strains[:, :, 0] + self.strains[:, :, 1]) ** 2) / 2 - self.strains[:, :, 2] ** 2)
         elif which == 2:
             return (self.strains[:, :, 0] + self.strains[:, :, 1]) / 2 - \
-            np.sqrt(((self.strains[:, :, 0] + self.strains[:, :, 1]) ** 2) / 2 - self.strains[:, :, 2] ** 2)
+                np.sqrt(((self.strains[:, :, 0] + self.strains[:, :, 1]) ** 2) / 2 - self.strains[:, :, 2] ** 2)
         else:
             raise KeyError("There are only two principal strain, 1 and 2")
 
@@ -196,13 +201,11 @@ class DIC_Result:
         Translate the coordinate system
         :param np.ndarray vector: translation vector
         """
-
         self.coords + vector
-
 
     def rotate(self, matrix: 'np.ndarray(shape=(3,3))'):
         """
-        Translate the coordinate system
+        Rotate the coordinate system
         :param np.ndarray matrix: rotation matrix
         """
 
@@ -225,16 +228,16 @@ class DIC_Result:
         sin_th = np.linalg.norm(cp_e_x, axis=-1) * sgn_th
 
         new_strains = np.zeros_like(self.strains)
-        new_strains[:, :, 0] = self.strains[:, :, 0]*cos_th**2 \
-                               + self.strains[:, :, 1]*sin_th**2 \
-                               + self.strains[:, :, 2]*sin_th*cos_th
+        new_strains[:, :, 0] = self.strains[:, :, 0] * cos_th ** 2 \
+                               + self.strains[:, :, 1] * sin_th ** 2 \
+                               + self.strains[:, :, 2] * sin_th * cos_th
 
-        new_strains[:, :, 1] = self.strains[:, :, 0]*sin_th**2 \
-                               + self.strains[:, :, 1]*cos_th**2 \
-                               - self.strains[:, :, 2]*sin_th*cos_th
+        new_strains[:, :, 1] = self.strains[:, :, 0] * sin_th ** 2 \
+                               + self.strains[:, :, 1] * cos_th ** 2 \
+                               - self.strains[:, :, 2] * sin_th * cos_th
 
-        new_strains[:, :, 2] = 2*(self.strains[:, :, 0] - self.strains[:, :, 1])*sin_th*cos_th \
-                               + self.strains[:, :, 2]*(cos_th**2 - sin_th**2)
+        new_strains[:, :, 2] = 2 * (self.strains[:, :, 0] - self.strains[:, :, 1]) * sin_th * cos_th \
+                               + self.strains[:, :, 2] * (cos_th ** 2 - sin_th ** 2)
 
         self.strains = new_strains
         self.node_normals = np.einsum("ik, ...k -> ...i", matrix, self.node_normals)

@@ -22,11 +22,30 @@ def load_from(path: str, file_type: str = "ARAMIS_XML",
               force_max: float = None, offset_force_max: int = 0,
               force_min: float = None, offset_force_min: int = 0,
               time_min: float = None, offset_time_min: int = 0,
-              time_max: float = None, offset_time_max: int = 0,
-              verbose: bool = False):
+              time_max: float = None, offset_time_max: int = 0):
+
+    """
+    Load the results of a DIC-Engine
+    :param path: path of the file
+    :param file_type: type of the file, fow now only "ARAMIS_XML" is supported
+    :param thinning: reduction of the number of time steps option
+    :param last_time_step: all timesteps after will be discarded
+    :param first_timestep: all timestep before will be discarded
+    :param force_rupture_ratio: determine the rupture of the specimen
+    :param offset_force_rupture_ratio: offset the last time step determined by force_rupture ratio of a given number of timesteps
+    :param force_max: discard all timesteps after the force reach a value higher than force_max
+    :param offset_force_max: offset for the value determined by setting force_max
+    :param force_min: discard all timesteps before the force reach a value higher than force_min
+    :param offset_force_min: offset for the value determined by setting force_min
+    :param time_min: discard all timesteps before the time_min
+    :param offset_time_min: offset for the value determined by setting time_min
+    :param time_max: discard all timesteps after the time_max
+    :param offset_time_max: offset for the value determined by setting time_max
+    :return:
+    """
 
     if file_type == "ARAMIS_XML":
-        coords, strains, force, time, mesh = parsers.ARAMIS_XML_Parser.parse(path_xml=path, verbose=verbose)
+        coords, strains, force, time, mesh = parsers.ARAMIS_XML_Parser.parse(path_xml=path)
     else:
         raise NotImplementedError("No Parser for file_type="+file_type)
 

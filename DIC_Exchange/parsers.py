@@ -19,10 +19,12 @@ import xml.etree.ElementTree as ET
 import re
 from abc import ABC
 
+import logging
+
 
 class ABC_parser(ABC):
     @classmethod
-    def parse(cls, path, verbose = True):
+    def parse(cls, path):
         raise NotImplementedError
 
 
@@ -30,8 +32,9 @@ class ABC_parser(ABC):
 
 class DICe_Parser(ABC_parser):
     @classmethod
-    def parse(cls, path, verbose = True):
+    def parse(cls, path):
         raise RuntimeError
+
 
 #### Aramis Parser
 
@@ -41,6 +44,7 @@ LEN_DOUBLE = struct.calcsize("<d")
 LEN_CHAR = struct.calcsize("<c")
 LEN_FLOAT = struct.calcsize("<f")
 
+
 class ARAMIS_XML_Parser:
     """
     Parser for XML Aramis binary output file
@@ -48,20 +52,19 @@ class ARAMIS_XML_Parser:
     version = 0.1
 
     @classmethod
-    def parse(csl, path_xml, verbose=True):
+    def parse(csl, path_xml):
 
-        if verbose == True:
-            v_print = print
-        else:
-            v_print = lambda x : None
-
-        v_print("start reading XML data")
-        header_read, nominal_read, measured_read = read_file(path_xml, v_print)
-        v_print("start writing hdf5")
+        logging.debug("start reading XML data")
+        header_read, nominal_read, measured_read = read_file(path_xml)
+        logging.debug("start writing hdf5")
 
         rel_time = []
         stage_id = []
         stage_name = []
+
+        length_unit_factor, time_unit_factor, angle_unit_factor, force_unit_factor = header_read[1]
+
+        """For not unis factor ar not in use"""
 
         for stage in header_read[0]:
             rel_time.append(float(stage["rel_time"]))
@@ -111,12 +114,12 @@ class ARAMIS_XML_Parser:
         strains["eps_yy"] = comparison_surface_list[list_epsilon[eps_yy_key]]
         strains["eps_xy"] = comparison_surface_list[list_epsilon[eps_xy_key]]
 
-        v_print("Done parsing xml")
+        logging.debug("Done parsing xml")
 
         return coords, strains, force, time, mesh
 
 
-def read_file(path, v_print):
+def read_file(path):
     tree = ET.parse(path)
     root = tree.getroot()
 
@@ -124,27 +127,27 @@ def read_file(path, v_print):
 
     for an_el in root:
         if an_el.tag == "header":
-            v_print("start reading header")
+            logging.debug("start reading header")
             header_el = an_el
-            header_read = read_header(header_el, v_print)
-            v_print("done reading header")
+            header_read = read_header(header_el)
+            logging.debug("done reading header")
         elif an_el.tag == "nominal":
-            v_print("start reading nominal")
+            logging.debug("start reading nominal")
             nominal_el = an_el
-            nominal_read = read_nominal(nominal_el, v_print)
-            v_print("done reading nominal")
+            nominal_read = read_nominal(nominal_el)
+            logging.debug("done reading nominal")
         elif an_el.tag == "measured":
-            v_print("start reading measured")
+            logging.debug("start reading measured")
             measured_el = an_el
             measured_read = read_measured(measured_el)
-            v_print("done reading measured")
+            logging.debug("done reading measured")
 
-    v_print("done reading file")
+    logging.debug("done reading file")
 
     return header_read, nominal_read, measured_read
 
 
-def read_nominal(nominal_el, v_print):
+def read_nominal(nominal_el):
     comparison_surface_list = dict()
     dimension_list = []
     for an_el in nominal_el:
@@ -166,11 +169,12 @@ def read_nominal(nominal_el, v_print):
                                     bytes_b64 += chunk.text
                                 buff_surf_comp[the_id] = read_surface_component_scalar(bytes_b64)
                             else:
-                                raise ValueError("Invalid stage in results of comparison surface component " + str(surf_comp_name))
+                                raise ValueError(
+                                    "Invalid stage in results of comparison surface component " + str(surf_comp_name))
                 elif under_el.tag == "strain_semantic":
                     pass
                 else:
-                    v_print(under_el)
+                    logging.error(under_el)
                     raise ValueError("Uknnown element in comparison surface component  " + str(surf_comp_name))
             comparison_surface_list[surf_comp_name] = buff_surf_comp
         elif an_el.tag == "dimension":
@@ -186,29 +190,29 @@ def read_nominal(nominal_el, v_print):
     return comparison_surface_list, dimension_list
 
 
-def read_header(header_el, v_print):
+def read_header(header_el):
     stages_list = []
     for an_el in header_el:
 
         if an_el.tag == "version":
-            v_print("Version of the XML file is " + an_el.text)
+            logging.info("Version of the XML file is " + an_el.text)
 
         elif an_el.tag == "length_unit":
-            v_print("Length unit of the document is " + an_el.text)
+            logging.info("Length unit of the document is " + an_el.text)
             if an_el.text == "mm":
                 length_unit_factor = 1
             else:
                 raise ValueError("Unknown length unit format")
 
         elif an_el.tag == "time_unit":
-            v_print("Time unit of the document is " + an_el.text)
+            logging.info("Time unit of the document is " + an_el.text)
             if an_el.text == "s":
                 time_unit_factor = 1
             else:
                 raise ValueError("Unknown time unit format")
 
         elif an_el.tag == "force_unit":
-            v_print("Force unit of the document is " + an_el.text)
+            logging.info("Force unit of the document is " + an_el.text)
             if an_el.text == "N":
                 force_unit_factor = 1
             elif an_el.text == "kN":
@@ -217,11 +221,11 @@ def read_header(header_el, v_print):
                 raise ValueError("Unknown force unit format")
 
         elif an_el.tag == "angle_unit":
-            v_print("Angle unit of the document is " + an_el.text)
+            logging.info("Angle unit of the document is " + an_el.text)
             if an_el.text == "deg":
                 angle_unit_factor = 1
             elif an_el.text == "rad":
-                angle_unit_factor = 2*np.pi/360
+                angle_unit_factor = 2 * np.pi / 360
             else:
                 raise ValueError("Unknown angle unit format")
 
@@ -230,7 +234,7 @@ def read_header(header_el, v_print):
         else:
             raise ValueError("Unknown element in Header")
 
-    v_print("Found {the_len} stage(s)".format(the_len=len(stages_list)))
+    logging.debug("Found {the_len} stage(s)".format(the_len=len(stages_list)))
 
     return stages_list, (length_unit_factor, time_unit_factor, angle_unit_factor, force_unit_factor)
 
@@ -257,8 +261,8 @@ def read_surface_component_scalar(string_binary):
         len_string = struct.unpack("<I", message_bytes[off: off + LEN_INT])[0]
         off += LEN_INT
         unit_name = struct.unpack("<" + str(len_string) + "s",
-                                  message_bytes[off: off + len_string*LEN_CHAR])[0].decode("latin-1")
-        off += len_string*LEN_CHAR
+                                  message_bytes[off: off + len_string * LEN_CHAR])[0].decode("latin-1")
+        off += len_string * LEN_CHAR
 
     n_vertices = struct.unpack("<I", message_bytes[off: off + LEN_INT])[0]
     off += LEN_INT
@@ -287,7 +291,7 @@ def read_surface_component_scalar(string_binary):
             raise RuntimeError("Error in decoding stage geometry, invalid Flag")
 
     if unit_name != 'log_strain':
-        warnings.warn("strain is not log strain, but " + unit_name)
+        logging.warning("strain is not log strain, but " + unit_name)
 
     if dire_vect_flag == 1:
         return buff_scalar, buff_vector
@@ -302,12 +306,12 @@ def read_surface_component_triangles(string_binary):
 
     len_chain = len(message_bytes)
     n_triangle = int((len_chain - 2 * LEN_INT) / (3 * LEN_INT))
-    triangle_unpack = struct.unpack("<II" + str(3*n_triangle) + "I", message_bytes)
+    triangle_unpack = struct.unpack("<II" + str(3 * n_triangle) + "I", message_bytes)
     triangle_buff = []
     for i in range(triangle_unpack[1]):
-        triangle_buff.append((triangle_unpack[2+i*3],
-                              triangle_unpack[2+i*3+1],
-                              triangle_unpack[2+i*3+2],))
+        triangle_buff.append((triangle_unpack[2 + i * 3],
+                              triangle_unpack[2 + i * 3 + 1],
+                              triangle_unpack[2 + i * 3 + 2],))
 
     return triangle_buff
 
@@ -324,15 +328,15 @@ def read_surface_component_vertices(string_binary):
     vertices_cords_i = []
     indexes = []
     for i in range(n_vertices):
-        valid = struct.unpack("<B", message_bytes[off:off+1])[0]
+        valid = struct.unpack("<B", message_bytes[off:off + 1])[0]
         off += 1
         if valid == 1:
             indexes.append(i)
-            buff_vertices = struct.unpack("<III", message_bytes[off:off+12])
+            buff_vertices = struct.unpack("<III", message_bytes[off:off + 12])
             vertices_cords_i.append((buff_vertices[0],
                                      buff_vertices[1],
                                      buff_vertices[2]))
-            off = off + 3*LEN_INT
+            off = off + 3 * LEN_INT
         elif valid == 0:
             continue
         else:
@@ -344,7 +348,8 @@ def read_surface_component_vertices(string_binary):
     vertices_cords_i = np.array(vertices_cords_i)
     vertices_cords_f = vertices_cords_i / MAX_UINT
     if n_vertices != 0:
-        vertices_cords = np.array([(max_corner[i] - min_corner[i]) * vertices_cords_f[:, i] + min_corner[i] for i in range(3)])
+        vertices_cords = np.array(
+            [(max_corner[i] - min_corner[i]) * vertices_cords_f[:, i] + min_corner[i] for i in range(3)])
 
     vertices_dict = {}
     for i in range(len(indexes)):
