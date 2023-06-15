@@ -18,6 +18,8 @@ import warnings
 import xml.etree.ElementTree as ET
 import re
 from abc import ABC
+import netCDF4
+from scipy.spatial import Delaunay
 
 import logging
 
@@ -36,6 +38,37 @@ class DICe_Parser(ABC_parser):
         raise RuntimeError
 
 
+class EParser(DICe_Parser):
+    """
+    Parser for .e-files that contain the output of DICe analysis
+    """
+    @classmethod
+    def parse(cls, path):
+        nc = netCDF4.Dataset(path)
+        variables = nc.variables
+
+        coords = np.array([variables[f'vals_nod_var{init}'][:] + variables[f'vals_nod_var{disp}'][:]
+                           for init, disp in zip([55, 56], [12, 13])])
+        coords = np.transpose(coords, (1, 2, 0))
+
+        z_zeros = np.zeros(coords.shape[:2])
+        coords = np.dstack((coords, z_zeros))
+
+        strains = np.array([variables[f'vals_nod_var{num}'][:] for num in [45, 46, 47]])
+        strains = np.transpose(strains, (1, 2, 0))
+
+        time = np.array(variables[f'time_whole'][:])
+        frames = coords.shape[0]
+        # this is just temporary until force data can be used
+        force = np.zeros((frames,))
+
+        # Delaunay triangulation based on the first set of points
+        tri = Delaunay(coords[0, :, :2])
+        mesh = tri.simplices
+
+        return coords, strains, force, time, mesh
+
+
 #### Aramis Parser
 
 MAX_UINT = 2 ** 32 - 1
@@ -52,7 +85,7 @@ class ARAMIS_XML_Parser:
     version = 0.1
 
     @classmethod
-    def parse(csl, path_xml):
+    def parse(cls, path_xml):
 
         logging.debug("start reading XML data")
         header_read, nominal_read, measured_read = read_file(path_xml)
