@@ -14,6 +14,8 @@
 import DIC_Exchange.HDF5Exchange
 from DIC_Exchange import parsers
 import numpy as np
+import logging
+import time as ptime
 
 
 def load_from(path: str, file_type: str = "ARAMIS_XML",
@@ -23,7 +25,6 @@ def load_from(path: str, file_type: str = "ARAMIS_XML",
               force_min: float = None, offset_force_min: int = 0,
               time_min: float = None, offset_time_min: int = 0,
               time_max: float = None, offset_time_max: int = 0):
-
     """
     Load the results of a DIC-Engine
     :param path: path of the file
@@ -47,7 +48,7 @@ def load_from(path: str, file_type: str = "ARAMIS_XML",
     if file_type == "ARAMIS_XML":
         coords, strains, force, time, mesh = parsers.ARAMIS_XML_Parser.parse(path_xml=path)
     else:
-        raise NotImplementedError("No Parser for file_type="+file_type)
+        raise NotImplementedError("No Parser for file_type=" + file_type)
 
     the_first_time_step = 0
     the_last_time_step = len(coords.keys())
@@ -91,6 +92,8 @@ def load_from(path: str, file_type: str = "ARAMIS_XML",
         stop_time += offset_time_max
         the_last_time_step = min(stop_time, the_last_time_step)
 
+    logging.debug(f"selecting timestep {the_first_time_step}:{the_last_time_step}:{thinning}")
+
     coords_a, strains_a, force_a, time_a, mesh_a = _numpyfi(coords, strains, force, time, mesh,
                                                             fstep=the_first_time_step,
                                                             lstep=the_last_time_step, step=thinning)
@@ -102,6 +105,8 @@ def load_from(path: str, file_type: str = "ARAMIS_XML",
 def _numpyfi(coords_o, strains_o, force_o, time_o, mesh_o, fstep=0, lstep=-1, step=1):
     # get_the set of element
 
+    logging.info(f"{ptime.strftime('%H:%M:%S')} Prepare numpy")
+
     list_stage = list(time_o.keys())
     list_stage = list_stage[fstep:lstep:step]
     element_set = set(coords_o[list_stage[0]].keys())
@@ -111,6 +116,10 @@ def _numpyfi(coords_o, strains_o, force_o, time_o, mesh_o, fstep=0, lstep=-1, st
 
     element_set = list(element_set)  # order preservation
 
+    logging.debug(f"final elements set with {len(element_set)} elements")
+
+    logging.info(f"{ptime.strftime('%H:%M:%S')} Start converting Mesh")
+
     # clean the mesh
     mesh_buff = []
     for el in mesh_o:
@@ -119,6 +128,13 @@ def _numpyfi(coords_o, strains_o, force_o, time_o, mesh_o, fstep=0, lstep=-1, st
     mesh = np.array(mesh_buff)
 
     element_set = list(element_set)
+    element_set.sort()
+
+    logging.info(f"{ptime.strftime('%H:%M:%S')} Done converting Mesh")
+
+    logging.info(f"{ptime.strftime('%H:%M:%S')} Start converting coordinates")
+
+
     # stacking the coordinates
     coords_np = []
     for a_stage in list_stage:
@@ -126,19 +142,36 @@ def _numpyfi(coords_o, strains_o, force_o, time_o, mesh_o, fstep=0, lstep=-1, st
         for a_el in element_set:
             buff_coords.append(coords_o[a_stage][a_el])
         coords_np.append(buff_coords)
+
+    del coords_o
+
     coords = np.array(coords_np)
+
+    del coords_np
+
+    logging.info(f"{ptime.strftime('%H:%M:%S')} Done converting coordinates")
+
+    logging.info(f"{ptime.strftime('%H:%M:%S')} Start converting strains")
 
     # stacking the strains
     strains_np = []
     for a_stage in list_stage:
 
         buff = []
-        for a_el in element_set:
-            buff.append(np.array([strains_o["eps_xx"][a_stage][a_el],
-                                  strains_o["eps_yy"][a_stage][a_el],
-                                  strains_o["eps_xy"][a_stage][a_el]]))
+        for an_eps in ["eps_xx", "eps_yy", "eps_xy"]:
+            indexes_argsort = np.argsort(strains_o[an_eps][a_stage][0])
+            are_in_loc = np.isin(strains_o[an_eps][a_stage][0][indexes_argsort], element_set)
+            buff.append(strains_o[an_eps][a_stage][1][indexes_argsort][are_in_loc])
+
         strains_np.append(buff)
-    strains = np.array(strains_np)[:, :, :, 0]
+
+    del strains_o
+    strains = np.array(strains_np).swapaxes(-1, 1)
+    del strains_np
+
+    strains
+
+    logging.info(f"{ptime.strftime('%H:%M:%S')} Done converting strains")
 
     # turn force and time in arrays
     time = []
@@ -149,5 +182,7 @@ def _numpyfi(coords_o, strains_o, force_o, time_o, mesh_o, fstep=0, lstep=-1, st
 
     time = np.array(time)
     force = np.array(force)
+
+    logging.info(f"{ptime.strftime('%H:%M:%S')} Done Transforming file")
 
     return coords, strains, force, time, mesh

@@ -15,6 +15,8 @@ import numpy as np
 import h5py
 from typing import NoReturn
 from DIC_Exchange import mesh_utils
+import logging
+import time as ptime
 
 
 class DIC_Result:
@@ -51,7 +53,9 @@ class DIC_Result:
 
         self.node_normals = node_normal
         if self.node_normals is None:
+            logging.info(f"{ptime.strftime('%H:%M:%S')} Start computing normals")
             self._compute_node_normal()
+            logging.info(f"{ptime.strftime('%H:%M:%S')} Done computing normals")
         """normal to the surface at the node coordinates, usefull to handle local coordinate systems"""
 
         self._init_mesh_property()

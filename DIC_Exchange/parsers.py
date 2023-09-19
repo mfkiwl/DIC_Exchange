@@ -18,7 +18,7 @@ import warnings
 import xml.etree.ElementTree as ET
 import re
 from abc import ABC
-
+import time as ptime
 import logging
 
 
@@ -54,9 +54,9 @@ class ARAMIS_XML_Parser:
     @classmethod
     def parse(csl, path_xml):
 
-        logging.debug("start reading XML data")
+        logging.info(f"{ptime.strftime('%H:%M:%S')} start reading XML data")
         header_read, nominal_read, measured_read = read_file(path_xml)
-        logging.debug("start writing hdf5")
+        logging.info(f"{ptime.strftime('%H:%M:%S')} start writing hdf5")
 
         rel_time = []
         stage_id = []
@@ -71,7 +71,7 @@ class ARAMIS_XML_Parser:
             stage_name.append(str(stage["name"]))
             stage_id.append(stage["id"])
 
-        triangle, geometry = measured_read
+        triangle, coords = measured_read
 
         comparison_surface_list, dimension_list = nominal_read
         force_values = [float(dimension_list[0][i][1]) for i in range(len(dimension_list[0]))]
@@ -107,14 +107,13 @@ class ARAMIS_XML_Parser:
 
         mesh = np.array(triangle)
 
-        coords = geometry
         strains = dict()
 
         strains["eps_xx"] = comparison_surface_list[list_epsilon[eps_xx_key]]
         strains["eps_yy"] = comparison_surface_list[list_epsilon[eps_yy_key]]
         strains["eps_xy"] = comparison_surface_list[list_epsilon[eps_xy_key]]
 
-        logging.debug("Done parsing xml")
+        logging.info(f"{ptime.strftime('%H:%M:%S')} Done parsing xml")
 
         return coords, strains, force, time, mesh
 
@@ -127,22 +126,22 @@ def read_file(path):
 
     for an_el in root:
         if an_el.tag == "header":
-            logging.debug("start reading header")
+            logging.info(f"{ptime.strftime('%H:%M:%S')} start reading header")
             header_el = an_el
             header_read = read_header(header_el)
-            logging.debug("done reading header")
+            logging.info(f"{ptime.strftime('%H:%M:%S')} done reading header")
         elif an_el.tag == "nominal":
-            logging.debug("start reading nominal")
+            logging.info(f"{ptime.strftime('%H:%M:%S')} start reading nominal")
             nominal_el = an_el
             nominal_read = read_nominal(nominal_el)
-            logging.debug("done reading nominal")
+            logging.info(f"{ptime.strftime('%H:%M:%S')} done reading nominal")
         elif an_el.tag == "measured":
-            logging.debug("start reading measured")
+            logging.info(f"{ptime.strftime('%H:%M:%S')} start reading measured")
             measured_el = an_el
             measured_read = read_measured(measured_el)
-            logging.debug("done reading measured")
+            logging.info(f"{ptime.strftime('%H:%M:%S')} done reading measured")
 
-    logging.debug("done reading file")
+    logging.info(f"{ptime.strftime('%H:%M:%S')} done reading file")
 
     return header_read, nominal_read, measured_read
 
@@ -251,8 +250,8 @@ def read_measured(measured_el):
 
 
 def read_surface_component_scalar(string_binary):
-    base64_bytes = string_binary.encode('utf-8')
-    message_bytes = base64.b64decode(base64_bytes)
+    message_bytes = base64.b64decode(string_binary.encode('utf-8'))
+
     off = 0
     version = struct.unpack("<I", message_bytes[:LEN_INT])[0]
     off += LEN_INT
@@ -272,31 +271,40 @@ def read_surface_component_scalar(string_binary):
         dire_vect_flag = struct.unpack("<B", message_bytes[off: off + LEN_CHAR])[0]
         off += LEN_CHAR
 
-    indexes = []
-    buff_scalar = {}
-    buff_vector = {}
+    indexes = np.empty(shape=(n_vertices,), dtype=float)
+    buff_scalar = np.empty(shape=(n_vertices,), dtype=float)
+    buff_vector = np.empty(shape=(n_vertices,3), dtype=float)
+
     for i in range(n_vertices):
         valid = struct.unpack("<B", message_bytes[off:off + LEN_CHAR])[0]
         off += LEN_CHAR
         if valid == 1:
-            indexes.append(i)
-            buff_scalar[i] = struct.unpack("<f", message_bytes[off:off + LEN_FLOAT])
+            indexes[i] = i
+            buff_scalar[i] = np.array(struct.unpack("<f", message_bytes[off:off + LEN_FLOAT]))
             off += LEN_FLOAT
             if dire_vect_flag == 1:
-                buff_vector[i] = struct.unpack("<fff", message_bytes[off:off + 3 * LEN_FLOAT])
+                buff_vector[i, :] = np.array(struct.unpack("<fff", message_bytes[off:off + 3 * LEN_FLOAT]))
                 off += 3 * LEN_FLOAT
         elif valid == 0:
+            indexes[i] = np.nan
             continue
         else:
             raise RuntimeError("Error in decoding stage geometry, invalid Flag")
 
-    if unit_name != 'log_strain':
-        logging.warning("strain is not log strain, but " + unit_name)
+    # drop nan values
+
+    loc_nan = np.logical_not(np.isnan(indexes))
+    indexes = indexes[loc_nan]
+    buff_scalar = buff_scalar[loc_nan]
+    buff_vector = buff_vector[loc_nan]
+
+    #if unit_name != 'log_strain':
+    #    logging.warning("strain is not log strain, but " + unit_name)
 
     if dire_vect_flag == 1:
-        return buff_scalar, buff_vector
+        return indexes, buff_scalar, buff_vector
     else:
-        return buff_scalar
+        return indexes, buff_scalar
 
 
 def read_surface_component_triangles(string_binary):
@@ -325,19 +333,21 @@ def read_surface_component_vertices(string_binary):
     max_corner = np.array(header[4:7])
     n_vertices = header[-1]
     off = offset_header
-    vertices_cords_i = []
-    indexes = []
+    vertices_cords_f = np.empty(shape=(n_vertices, 3), dtype=float)
+    indexes = np.empty(shape=(n_vertices,), dtype=int)
+
     for i in range(n_vertices):
         valid = struct.unpack("<B", message_bytes[off:off + 1])[0]
         off += 1
         if valid == 1:
-            indexes.append(i)
+            indexes[i] = i
             buff_vertices = struct.unpack("<III", message_bytes[off:off + 12])
-            vertices_cords_i.append((buff_vertices[0],
-                                     buff_vertices[1],
-                                     buff_vertices[2]))
+            vertices_cords_f[i, 0] = buff_vertices[0] / MAX_UINT
+            vertices_cords_f[i, 1] = buff_vertices[1] / MAX_UINT
+            vertices_cords_f[i, 2] = buff_vertices[2] / MAX_UINT
             off = off + 3 * LEN_INT
         elif valid == 0:
+            indexes[i] = -99999
             continue
         else:
             raise RuntimeError("Error in decoding stage geometry, invalid Flag")
@@ -345,8 +355,10 @@ def read_surface_component_vertices(string_binary):
     if off != len(message_bytes):
         raise RuntimeError("Error in decoding stage geometry, invalid binary message length")
 
-    vertices_cords_i = np.array(vertices_cords_i)
-    vertices_cords_f = vertices_cords_i / MAX_UINT
+    loc_valid = indexes != -99999
+    indexes = indexes[loc_valid]
+    vertices_cords_f = vertices_cords_f[loc_valid]
+
     if n_vertices != 0:
         vertices_cords = np.array(
             [(max_corner[i] - min_corner[i]) * vertices_cords_f[:, i] + min_corner[i] for i in range(3)])

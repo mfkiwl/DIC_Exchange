@@ -25,10 +25,10 @@ setup(
                 ' results for material testing purposes, based on HDF5',
     install_requires=[
             'setuptools>=67.2.0',
-            'numpy~=1.23.4',
-            'h5py~=3.7.0',
+            'numpy>=1.23.4',
+            'h5py>=3.7.0',
             'tqdm',
-            'matplotlib~=3.6.2'
+            'matplotlib>=3.6.2'
         ],
     classifiers=['Private :: Do Not Upload',
                  'Development Status :: 3 - Alpha',
