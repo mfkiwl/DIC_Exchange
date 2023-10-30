@@ -110,7 +110,7 @@ def mesh_holes(mesh: "np.ndarray(shape=q, 3)") -> list[list]:
                 unique_half_edges_set.remove(an_half_edges_to_remove)
 
         holes.append(buff_hole)
-        return holes
+    return holes
 
 
 def has_mesh_hole(mesh: "np.ndarray(shape=q, 3)") -> bool:
